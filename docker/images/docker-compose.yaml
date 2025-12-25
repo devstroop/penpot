@@ -137,9 +137,9 @@ services:
       ## Database connection parameters. Don't touch them unless you are using custom
       ## postgresql connection parameters.
 
-      PENPOT_DATABASE_URI: postgresql://penpot-postgres/penpot
-      PENPOT_DATABASE_USERNAME: penpot
-      PENPOT_DATABASE_PASSWORD: penpot
+      PENPOT_DATABASE_URI: postgresql://penpot-postgres/${POSTGRES_DB:-penpot}
+      PENPOT_DATABASE_USERNAME: ${POSTGRES_USER:-penpot}
+      PENPOT_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-penpot}
 
       ## Valkey (or previously redis) is used for the websockets notifications. Don't touch
       ## unless the valkey container has different parameters or different name.
@@ -208,7 +208,7 @@ services:
     stop_signal: SIGINT
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U penpot"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-penpot}"]
       interval: 2s
       timeout: 10s
       retries: 5
@@ -222,9 +222,9 @@ services:
 
     environment:
       - POSTGRES_INITDB_ARGS=--data-checksums
-      - POSTGRES_DB=penpot
-      - POSTGRES_USER=penpot
-      - POSTGRES_PASSWORD=penpot
+      - POSTGRES_DB=${POSTGRES_DB:-penpot}
+      - POSTGRES_USER=${POSTGRES_USER:-penpot}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-penpot}
 
   penpot-valkey:
     image: valkey/valkey:8.1
