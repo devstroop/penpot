@@ -45,7 +45,7 @@ x-body-size: &penpot-http-body-size
 ##
 ## python3 -c "import secrets; print(secrets.token_urlsafe(64))"
 x-secret-key: &penpot-secret-key
-  PENPOT_SECRET_KEY: change-this-insecure-key
+  PENPOT_SECRET_KEY: ${PENPOT_SECRET_KEY:-change-this-insecure-key}
 
 networks:
   penpot:
