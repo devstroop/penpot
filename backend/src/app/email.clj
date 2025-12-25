@@ -177,7 +177,24 @@
    "expected valid smtp config"
    (valid-smtp-config? cfg))
 
+  ;; Validate essential SMTP settings
+  (when-not (::host cfg)
+    (throw (ex/error :type :validation
+                     :code :invalid-smtp-config
+                     :hint "SMTP host is required")))
+  
+  (when-not (::port cfg)
+    (throw (ex/error :type :validation
+                     :code :invalid-smtp-config
+                     :hint "SMTP port is required")))
+
   (let [props (opts->props cfg)]
+    (l/dbg :hint "creating SMTP session"
+           :host (::host cfg)
+           :port (::port cfg)
+           :tls (::tls cfg)
+           :ssl (::ssl cfg)
+           :has-auth (boolean (::username cfg)))
     (Session/getInstance props)))
 
 (defn- create-smtp-message
@@ -307,23 +324,45 @@
   [_ cfg]
   (fn [params]
     (when (contains? cf/flags :smtp)
-      (let [session (create-smtp-session cfg)]
-        (with-open [transport (.getTransport session (if (::ssl cfg) "smtps" "smtp"))]
-          (.connect ^Transport transport
-                    ^String (::host cfg)
-                    ^String (::port cfg)
-                    ^String (::username cfg)
-                    ^String (::password cfg))
+      (try
+        (let [session (create-smtp-session cfg)]
+          (with-open [transport (.getTransport session (if (::ssl cfg) "smtps" "smtp"))]
+            (.connect ^Transport transport
+                      ^String (::host cfg)
+                      ^String (::port cfg)
+                      ^String (::username cfg)
+                      ^String (::password cfg))
 
-          (let [^MimeMessage message (create-smtp-message cfg session params)]
-            (l/dbg :hint "sendmail"
-                   :id (:id params)
-                   :to (:to params)
-                   :subject (str/trim (:subject params)))
+            (let [^MimeMessage message (create-smtp-message cfg session params)]
+              (l/dbg :hint "sendmail"
+                     :id (:id params)
+                     :to (:to params)
+                     :subject (str/trim (:subject params)))
 
-            (.sendMessage ^Transport transport
-                          ^MimeMessage message
-                          (.getAllRecipients message))))))
+              (.sendMessage ^Transport transport
+                            ^MimeMessage message
+                            (.getAllRecipients message)))))
+        (catch jakarta.mail.MessagingException cause
+          (l/err :hint "failed to send email via SMTP"
+                 :id (:id params)
+                 :to (:to params)
+                 :subject (:subject params)
+                 :smtp-host (::host cfg)
+                 :smtp-port (::port cfg)
+                 :cause cause)
+          (throw (ex/error :type :internal
+                           :code :email-send-failed
+                           :hint "SMTP email sending failed"
+                           :cause cause)))
+        (catch Exception cause
+          (l/err :hint "unexpected error sending email"
+                 :id (:id params)
+                 :to (:to params)
+                 :cause cause)
+          (throw (ex/error :type :internal
+                           :code :email-send-failed
+                           :hint "Email sending failed"
+                           :cause cause)))))
 
     (when (contains? cf/flags :log-emails)
       (send-to-logger! cfg params))))

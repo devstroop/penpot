@@ -173,14 +173,14 @@ services:
       ## provider. Emails are used to confirm user registrations & invitations. Look below
       ## how the mailcatch service is configured.
 
-      PENPOT_SMTP_DEFAULT_FROM: no-reply@example.com
-      PENPOT_SMTP_DEFAULT_REPLY_TO: no-reply@example.com
-      PENPOT_SMTP_HOST: penpot-mailcatch
-      PENPOT_SMTP_PORT: 1025
-      PENPOT_SMTP_USERNAME:
-      PENPOT_SMTP_PASSWORD:
-      PENPOT_SMTP_TLS: false
-      PENPOT_SMTP_SSL: false
+      PENPOT_SMTP_DEFAULT_FROM: ${PENPOT_SMTP_DEFAULT_FROM:-no-reply@example.com}
+      PENPOT_SMTP_DEFAULT_REPLY_TO: ${PENPOT_SMTP_DEFAULT_REPLY_TO:-no-reply@example.com}
+      PENPOT_SMTP_HOST: ${PENPOT_SMTP_HOST:-penpot-mailcatch}
+      PENPOT_SMTP_PORT: ${PENPOT_SMTP_PORT:-1025}
+      PENPOT_SMTP_USERNAME: ${PENPOT_SMTP_USERNAME:-}
+      PENPOT_SMTP_PASSWORD: ${PENPOT_SMTP_PASSWORD:-}
+      PENPOT_SMTP_TLS: ${PENPOT_SMTP_TLS:-false}
+      PENPOT_SMTP_SSL: ${PENPOT_SMTP_SSL:-false}
 
   penpot-exporter:
     image: "penpotapp/exporter:${PENPOT_VERSION:-latest}"
