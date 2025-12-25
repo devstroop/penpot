@@ -24,10 +24,10 @@
 # WARNING: if you're exposing Penpot to the internet, you should remove the flags
 # 'disable-secure-session-cookies' and 'disable-email-verification'
 x-flags: &penpot-flags
-  PENPOT_FLAGS: disable-email-verification enable-smtp enable-prepl-server disable-secure-session-cookies
+  PENPOT_FLAGS: ${PENPOT_FLAGS:-disable-email-verification enable-smtp enable-prepl-server disable-secure-session-cookies}
 
 x-uri: &penpot-public-uri
-  PENPOT_PUBLIC_URI: http://localhost:9001
+  PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:-http://localhost:9001}
 
 x-body-size: &penpot-http-body-size
   # Max body size (30MiB); Used for plain requests, should never be
@@ -181,6 +181,12 @@ services:
       PENPOT_SMTP_PASSWORD: ${PENPOT_SMTP_PASSWORD:-}
       PENPOT_SMTP_TLS: ${PENPOT_SMTP_TLS:-false}
       PENPOT_SMTP_SSL: ${PENPOT_SMTP_SSL:-false}
+
+      ## Email rate limiting - time to wait between recovery emails per account
+      PENPOT_EMAIL_VERIFY_THRESHOLD: ${PENPOT_EMAIL_VERIFY_THRESHOLD:-15m}
+
+      ## Restrict registration to specific email domains (comma-separated)
+      PENPOT_REGISTRATION_DOMAIN_WHITELIST: ${PENPOT_REGISTRATION_DOMAIN_WHITELIST:-}
 
   penpot-exporter:
     image: "penpotapp/exporter:${PENPOT_VERSION:-latest}"
