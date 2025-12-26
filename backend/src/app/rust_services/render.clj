@@ -42,18 +42,51 @@
 ;; ---------------------------------------------------------------------------
 
 (defn generate-thumbnail
-  "Generate a thumbnail for a page using Rust renderer."
-  [file-id page-id]
-  (log/debug :msg "Rust thumbnail requested"
-             :file-id file-id
-             :page-id page-id)
-  (rust/generate-thumbnail-rust {:file-id file-id :page-id page-id}))
+  "Generate a thumbnail for a page using Rust renderer.
+   
+   Options:
+   - :width  - Thumbnail width (default 300)
+   - :height - Thumbnail height (default 150)"
+  ([file-id page-id]
+   (generate-thumbnail file-id page-id {}))
+  ([file-id page-id {:keys [width height]}]
+   (log/debug :msg "Rust thumbnail requested"
+              :file-id file-id
+              :page-id page-id)
+   (rust/generate-thumbnail-rust {:file-id file-id 
+                                   :page-id page-id
+                                   :width   width
+                                   :height  height})))
 
 (defn generate-file-thumbnails
   "Generate thumbnails for all pages in a file."
   [file-id page-ids]
   (p/all
    (map #(generate-thumbnail file-id %) page-ids)))
+
+;; ---------------------------------------------------------------------------
+;; SVG to Raster Conversion
+;; ---------------------------------------------------------------------------
+
+(defn svg-to-png
+  "Convert raw SVG content to PNG using Rust renderer.
+   
+   Options:
+   - :width  - Output width in pixels (default 800)
+   - :height - Output height in pixels (default 600)
+   - :scale  - Scale factor (default 1.0)"
+  [svg-content & [{:keys [width height scale] :as opts}]]
+  (log/debug :msg "Rust SVG→PNG conversion requested"
+             :svg-length (count svg-content)
+             :options opts)
+  (rust/render-svg-to-png svg-content (or opts {})))
+
+(defn svg-to-png-base64
+  "Convert SVG to PNG and return as base64 encoded string"
+  [svg-content & [opts]]
+  (p/let [result (svg-to-png svg-content opts)]
+    (when (:success result)
+      (:data result))))
 
 ;; ---------------------------------------------------------------------------
 ;; Batch Operations

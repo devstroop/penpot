@@ -88,6 +88,14 @@
 - [x] A/B testing support (percentage-based routing)
 - [x] Service registration for discovery
 
+### Phase 6: Docker Hybrid Deployment
+- [x] **docker-compose.hybrid.yml** - Full Penpot + Rust stack
+- [x] **Clojure HTTP client** - Calls Rust services from Penpot
+- [x] Prometheus metrics in Clojure client
+- [x] Health check integration
+- [x] Circuit breaker status from gateway
+- [x] Fallback to Clojure on Rust failure
+
 ## Test Results
 
 | Test Type | Count | Status |
@@ -256,6 +264,57 @@ cd rust-services
 
 # Stop services (graceful shutdown)
 ./scripts/dev.sh stop
+```
+
+## Docker Hybrid Deployment
+
+Run Penpot + Rust microservices together:
+
+```bash
+# Start full hybrid stack
+cd /path/to/penpot
+docker compose -f docker-compose.hybrid.yml up -d
+
+# With monitoring (Prometheus + Grafana)
+docker compose -f docker-compose.hybrid.yml --profile monitoring up -d
+
+# Check services
+docker compose -f docker-compose.hybrid.yml ps
+
+# View logs
+docker compose -f docker-compose.hybrid.yml logs -f rust-api-gateway
+```
+
+### Environment Variables (Penpot Backend)
+```bash
+# Enable Rust services integration
+PENPOT_RUST_SERVICES_ENABLED=true
+
+# Service URLs (auto-configured in docker-compose)
+PENPOT_SHAPE_VALIDATOR_URL=http://shape-validator:8081
+PENPOT_RENDER_SERVICE_URL=http://render-service:8083
+PENPOT_REALTIME_URL=http://realtime-sync:8082
+PENPOT_API_GATEWAY_URL=http://rust-api-gateway:8080
+```
+
+### Clojure Integration Example
+```clojure
+(require '[app.rust-services.client :as rust])
+
+;; Check if Rust services are enabled
+(rust/rust-services-enabled?)
+;; => true
+
+;; Validate shapes using Rust (100x faster)
+@(rust/validate-shapes-rust [{:id "1" :type "rect" ...}])
+;; => {:valid true :source :rust}
+
+;; Fallback to Clojure if Rust fails
+@(rust/validate-shapes-with-fallback shapes clojure-validate-fn)
+
+;; Check service health
+@(rust/check-all-services)
+;; => {:shape-validator true :render-service true ...}
 ```
 
 ## Distributed Tracing with Jaeger
