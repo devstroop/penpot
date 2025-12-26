@@ -1,0 +1,483 @@
+openapi: 3.0.3
+info:
+  title: Penpot Rust Microservices API
+  description: |
+    High-performance microservices for Penpot design platform.
+    
+    ## Services
+    - **API Gateway** (8080): Central routing and caching
+    - **Shape Validator** (8081): Shape validation
+    - **Realtime Sync** (8082): WebSocket collaboration
+    - **Render Service** (8083): SVG rendering
+  version: 0.1.0
+  license:
+    name: MPL-2.0
+    url: https://www.mozilla.org/en-US/MPL/2.0/
+
+servers:
+  - url: http://localhost:8080
+    description: API Gateway
+  - url: http://localhost:8081
+    description: Shape Validator
+  - url: http://localhost:8082
+    description: Realtime Sync
+  - url: http://localhost:8083
+    description: Render Service
+
+tags:
+  - name: gateway
+    description: API Gateway endpoints
+  - name: validation
+    description: Shape validation
+  - name: render
+    description: SVG rendering
+  - name: realtime
+    description: Realtime collaboration
+  - name: health
+    description: Health and metrics
+
+paths:
+  # =========================================================================
+  # API GATEWAY (8080)
+  # =========================================================================
+  /api/v1/validate:
+    post:
+      summary: Validate shapes via gateway
+      tags: [gateway]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResponse'
+        '503':
+          description: Validator service unavailable
+
+  /api/v1/files/{id}:
+    get:
+      summary: Get file (cached)
+      tags: [gateway]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/files/{id}/export:
+    post:
+      summary: Export file
+      tags: [gateway]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderRequest'
+      responses:
+        '200':
+          description: Rendered file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderResponse'
+
+  /cache/stats:
+    get:
+      summary: Get cache statistics
+      tags: [gateway]
+      responses:
+        '200':
+          description: Cache stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  size:
+                    type: integer
+                  ttl_seconds:
+                    type: integer
+
+  /cache/clear:
+    post:
+      summary: Clear cache
+      tags: [gateway]
+      responses:
+        '200':
+          description: Cache cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cleared:
+                    type: integer
+                  message:
+                    type: string
+
+  /rate-limit:
+    get:
+      summary: Get rate limit info
+      tags: [gateway]
+      responses:
+        '200':
+          description: Rate limit configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rate_limit:
+                    type: object
+                    properties:
+                      requests_per_second:
+                        type: integer
+                      burst_size:
+                        type: integer
+
+  # =========================================================================
+  # SHAPE VALIDATOR (8081)
+  # =========================================================================
+  /validate:
+    post:
+      summary: Validate shapes
+      tags: [validation]
+      servers:
+        - url: http://localhost:8081
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+            example:
+              shapes:
+                - id: "550e8400-e29b-41d4-a716-446655440000"
+                  name: "Rectangle"
+                  type: "rect"
+                  x: 0
+                  y: 0
+                  width: 100
+                  height: 100
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResponse'
+              example:
+                valid: true
+                total_shapes: 1
+                valid_shapes: 1
+                invalid_shapes: 0
+                total_errors: 0
+                processing_time_us: 5
+
+  # =========================================================================
+  # RENDER SERVICE (8083)
+  # =========================================================================
+  /render:
+    post:
+      summary: Render SVG to image
+      tags: [render]
+      servers:
+        - url: http://localhost:8083
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderRequest'
+            example:
+              svg: '<svg width="100" height="100"><rect fill="red" width="100" height="100"/></svg>'
+              format: png
+      responses:
+        '200':
+          description: Rendered image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderResponse'
+
+  /render-svg:
+    post:
+      summary: Render SVG to binary PNG
+      tags: [render]
+      servers:
+        - url: http://localhost:8083
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+            example: '<svg width="100" height="100"><rect fill="red" width="100" height="100"/></svg>'
+      responses:
+        '200':
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+
+  /thumbnail:
+    post:
+      summary: Generate thumbnail
+      tags: [render]
+      servers:
+        - url: http://localhost:8083
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThumbnailRequest'
+      responses:
+        '200':
+          description: Thumbnail image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderResponse'
+
+  # =========================================================================
+  # REALTIME SYNC (8082)
+  # =========================================================================
+  /stats:
+    get:
+      summary: Get connection statistics
+      tags: [realtime]
+      servers:
+        - url: http://localhost:8082
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active_rooms:
+                    type: integer
+                  total_connections:
+                    type: integer
+                  rooms:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        room_id:
+                          type: string
+                          format: uuid
+                        connections:
+                          type: integer
+
+  # =========================================================================
+  # HEALTH & METRICS (All Services)
+  # =========================================================================
+  /health:
+    get:
+      summary: Health check
+      tags: [health]
+      responses:
+        '200':
+          description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      tags: [health]
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    ValidateRequest:
+      type: object
+      required:
+        - shapes
+      properties:
+        shapes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shape'
+
+    ValidateResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        total_shapes:
+          type: integer
+        valid_shapes:
+          type: integer
+        invalid_shapes:
+          type: integer
+        total_errors:
+          type: integer
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        processing_time_us:
+          type: integer
+
+    Shape:
+      type: object
+      required:
+        - id
+        - name
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [rect, circle, path, text, image, frame, group, bool, svg-raw]
+        x:
+          type: number
+        y:
+          type: number
+        width:
+          type: number
+        height:
+          type: number
+
+    ValidationError:
+      type: object
+      properties:
+        shape_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+
+    RenderRequest:
+      type: object
+      properties:
+        svg:
+          type: string
+        format:
+          type: string
+          enum: [png, svg, pdf]
+        width:
+          type: integer
+        height:
+          type: integer
+        scale:
+          type: number
+        background:
+          type: string
+          description: Hex color (e.g., "#ffffff")
+
+    ThumbnailRequest:
+      type: object
+      required:
+        - svg
+      properties:
+        svg:
+          type: string
+        max_width:
+          type: integer
+          default: 256
+        max_height:
+          type: integer
+          default: 256
+
+    RenderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        format:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        data:
+          type: string
+          description: Base64-encoded image data
+        error:
+          type: string
+        processing_time_ms:
+          type: integer
+
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+        cached:
+          type: boolean
+        processing_time_ms:
+          type: integer
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        uptime_seconds:
+          type: integer
+        version:
+          type: string
+        services:
+          type: object
+          description: Service health status (gateway only)
+          properties:
+            validator:
+              type: boolean
+            realtime:
+              type: boolean
+            render:
+              type: boolean
+            backend:
+              type: boolean
+        capabilities:
+          type: array
+          description: Render capabilities (render service only)
+          items:
+            type: string

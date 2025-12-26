@@ -1,0 +1,59 @@
+# Docker Compose for Penpot Rust Services with Distributed Tracing
+# Includes Jaeger for trace collection and visualization
+#
+# Usage:
+#   docker-compose -f docker/docker-compose.hybrid.yml -f docker/docker-compose.tracing.yml up
+#
+# Access:
+#   - Jaeger UI: http://localhost:16686
+#   - API Gateway: http://localhost:8080 (traces visible in Jaeger)
+
+services:
+  # Override services to enable OTLP export
+  api-gateway:
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=api-gateway
+      - RUST_LOG=info,api_gateway=debug,common=debug
+
+  shape-validator:
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=shape-validator
+      - RUST_LOG=info,shape_validator=debug,common=debug
+
+  realtime-sync:
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=realtime-sync
+      - RUST_LOG=info,realtime_sync=debug,common=debug
+
+  render-service:
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=render-service
+      - RUST_LOG=info,render_service=debug,common=debug
+
+  # Jaeger All-in-One for trace collection
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: penpot-jaeger
+    restart: unless-stopped
+    ports:
+      # UI
+      - "16686:16686"
+      # OTLP gRPC receiver
+      - "4317:4317"
+      # OTLP HTTP receiver
+      - "4318:4318"
+      # Jaeger thrift receiver
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=info
+    networks:
+      - penpot-rust
+
+networks:
+  penpot-rust:
+    external: true

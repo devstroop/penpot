@@ -1,0 +1,164 @@
+# Docker Compose for Hybrid Penpot Deployment
+# Combines Clojure backend with Rust microservices
+#
+# Usage:
+#   docker compose -f docker-compose.hybrid.yml up -d
+#
+# Services:
+#   - api-gateway: Central routing and caching (port 8080)
+#   - shape-validator: Shape validation (port 8081)
+#   - realtime-sync: WebSocket collaboration (port 8082)
+#   - render-service: SVG rendering (port 8083)
+#   - prometheus: Metrics collection (port 9090)
+#   - grafana: Metrics visualization (port 3000)
+
+version: "3.9"
+
+services:
+  # ============================================================================
+  # RUST MICROSERVICES
+  # ============================================================================
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+      - SHAPE_VALIDATOR_URL=http://shape-validator:8081
+      - REALTIME_SYNC_URL=http://realtime-sync:8082
+      - RENDER_SERVICE_URL=http://render-service:8083
+      - CACHE_TTL_SECONDS=60
+    depends_on:
+      - shape-validator
+      - realtime-sync
+      - render-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+  shape-validator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.shape-validator
+    ports:
+      - "8081:8081"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+  realtime-sync:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.realtime-sync
+    ports:
+      - "8082:8082"
+    environment:
+      - RUST_LOG=info
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+  render-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.render-service
+    ports:
+      - "8083:8083"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+  # ============================================================================
+  # INFRASTRUCTURE
+  # ============================================================================
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+  # ============================================================================
+  # MONITORING
+  # ============================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - penpot-rust
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  penpot-rust:
+    driver: bridge
