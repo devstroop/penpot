@@ -1,5 +1,5 @@
 # Multi-stage build for Shape Validator
-FROM rust:1.83-slim-bookworm AS builder
+FROM rust:1.85-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -13,6 +13,16 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 COPY common ./common
 COPY shape-validator ./shape-validator
+COPY api-gateway ./api-gateway
+COPY realtime-sync ./realtime-sync
+COPY render-service ./render-service
+
+# Create stub for benchmarks and integration-tests (not needed for build)
+RUN mkdir -p benchmarks/src integration-tests/src && \
+    echo 'fn main() {}' > benchmarks/src/main.rs && \
+    echo 'fn main() {}' > integration-tests/src/main.rs && \
+    echo '[package]\nname = "benchmarks"\nversion = "0.1.0"\nedition = "2021"\n[dependencies]' > benchmarks/Cargo.toml && \
+    echo '[package]\nname = "integration-tests"\nversion = "0.1.0"\nedition = "2021"\n[dependencies]' > integration-tests/Cargo.toml
 
 # Build release
 RUN cargo build --release --package shape-validator
