@@ -1,0 +1,23 @@
+[package]
+name = "shape-validator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "shape-validator"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../common" }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }

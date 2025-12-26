@@ -1,0 +1,29 @@
+[package]
+name = "render-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "render-service"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../common" }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+
+# Rendering
+resvg = "0.44"
+usvg = "0.44"
+tiny-skia = "0.11"
+base64 = "0.22"

@@ -1,0 +1,32 @@
+# Prometheus configuration for Penpot Hybrid Deployment
+# Scrapes both Rust services and Penpot metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Rust Services
+  - job_name: 'rust-api-gateway'
+    static_configs:
+      - targets: ['rust-api-gateway:8080']
+    metrics_path: /metrics
+
+  - job_name: 'rust-shape-validator'
+    static_configs:
+      - targets: ['shape-validator:8081']
+    metrics_path: /metrics
+
+  - job_name: 'rust-realtime-sync'
+    static_configs:
+      - targets: ['realtime-sync:8082']
+    metrics_path: /metrics
+
+  - job_name: 'rust-render-service'
+    static_configs:
+      - targets: ['render-service:8083']
+    metrics_path: /metrics

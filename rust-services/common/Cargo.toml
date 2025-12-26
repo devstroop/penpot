@@ -1,0 +1,42 @@
+[package]
+name = "common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+database = ["dep:sqlx", "dep:deadpool-postgres", "dep:tokio-postgres", "dep:url"]
+cache = ["dep:redis", "dep:tokio"]
+resilience = ["dep:tokio"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+
+# Database (optional)
+sqlx = { workspace = true, optional = true }
+deadpool-postgres = { workspace = true, optional = true }
+tokio-postgres = { workspace = true, optional = true }
+url = { version = "2.5", optional = true }
+
+# Cache (optional)
+redis = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+
+# Metrics for circuit breaker
+metrics = { workspace = true }
+
+# HTTP client for bridge
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

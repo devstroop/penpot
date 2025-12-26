@@ -1,0 +1,42 @@
+# Multi-stage build for Render Service
+FROM rust:1.83-slim-bookworm AS builder
+
+WORKDIR /app
+
+# Install dependencies for rendering
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace files
+COPY Cargo.toml Cargo.lock ./
+COPY common ./common
+COPY render-service ./render-service
+
+# Build release
+RUN cargo build --release --package render-service
+
+# Runtime image
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    fontconfig \
+    fonts-liberation \
+    fonts-noto-core \
+    fonts-noto-cjk \
+    fonts-noto-mono \
+    && rm -rf /var/lib/apt/lists/*
+
+# Refresh font cache
+RUN fc-cache -fv
+
+COPY --from=builder /app/target/release/render-service /usr/local/bin/
+
+EXPOSE 8083
+
+CMD ["render-service"]
